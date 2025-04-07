@@ -191,28 +191,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.info("After manual data requests: coordinator has %d outputs", 
                          len(coordinator.data.get("outputs", {})) if coordinator.data else 0)
 
-    # Register services only once for the domain
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_INPUT):
-        hass.services.async_register(
-            DOMAIN, 
-            SERVICE_SET_INPUT, 
-            handle_set_input, 
-            schema=SET_INPUT_SCHEMA
-        )
-        
-        hass.services.async_register(
-            DOMAIN, 
-            SERVICE_SET_OUTPUT_LABEL, 
-            handle_set_output_label, 
-            schema=SET_LABEL_SCHEMA
-        )
-        
-        hass.services.async_register(
-            DOMAIN, 
-            SERVICE_SET_INPUT_LABEL, 
-            handle_set_input_label, 
-            schema=SET_INPUT_LABEL_SCHEMA
-        )
+    # Register services for the domain - always register to ensure services are updated
+    hass.services.async_register(
+        DOMAIN, 
+        SERVICE_SET_INPUT, 
+        handle_set_input, 
+        schema=SET_INPUT_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, 
+        SERVICE_SET_OUTPUT_LABEL, 
+        handle_set_output_label, 
+        schema=SET_LABEL_SCHEMA
+    )
+    
+    hass.services.async_register(
+        DOMAIN, 
+        SERVICE_SET_INPUT_LABEL, 
+        handle_set_input_label, 
+        schema=SET_INPUT_LABEL_SCHEMA
+    )
 
     # Set up all platform entities
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
