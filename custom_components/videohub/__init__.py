@@ -233,9 +233,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             
             # Verify it's actually stopped
             if hub.connected:
-                _LOGGER.warning("Videohub connection didn't close properly, forcing transport closure")
+                _LOGGER.warning("Videohub connection didn't close properly, forcing cleanup")
+                # Clear callbacks to prevent further Home Assistant interactions
+                hub._update_callbacks = []
+                
+                # Safely close transport if available
                 if hasattr(hub, '_transport') and hub._transport:
-                    hub._transport.abort()
+                    try:
+                        _LOGGER.debug("Forcing transport closure")
+                        if hasattr(hub._transport, 'close'):
+                            hub._transport.close()
+                        elif hasattr(hub._transport, 'abort'):
+                            hub._transport.abort()
+                        hub._transport = None  # Release reference
+                    except Exception as ex:
+                        _LOGGER.error("Error closing transport: %s", str(ex))
             else:
                 _LOGGER.info("Videohub connection successfully closed")
                 
@@ -243,15 +255,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     
     if unload_ok:
-        # Only remove services if this is the last config entry
-        if len(hass.data[DOMAIN]) == 0:
-            for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
-                if hass.services.has_service(DOMAIN, service):
-                    hass.services.async_remove(DOMAIN, service)
-        
-        # Clean up data entry
+        # Remove the current entry from data
         if entry.entry_id in hass.data[DOMAIN]:
             hass.data[DOMAIN].pop(entry.entry_id)
+        
+        # Check if this was the last entry AFTER removing the current one
+        if not hass.data[DOMAIN]:
+            _LOGGER.info("Unloading last Videohub entry, removing services")
+            for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
+                if hass.services.has_service(DOMAIN, service):
+                    _LOGGER.debug("Removing service %s.%s", DOMAIN, service)
+                    hass.services.async_remove(DOMAIN, service)
+        else:
+            _LOGGER.debug("Other Videohub entries still exist, keeping services registered")
     else:
         _LOGGER.warning("Failed to unload platforms for Videohub integration")
             
