@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DATA_SMARTVIDEOHUB, DATA_COORDINATOR
+from .const import DOMAIN, DATA_VIDEOHUB, DATA_COORDINATOR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Blackmagic Videohub select entities."""
     data = hass.data[DOMAIN][entry.entry_id]
-    hub = data[DATA_SMARTVIDEOHUB]
+    hub = data[DATA_VIDEOHUB]
     coordinator = data[DATA_COORDINATOR]
     device_name = data["name"]
 
@@ -163,6 +163,8 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         # Update output label if changed
         if "label" in output_data and output_data["label"] != self._output_label:
             self._output_label = output_data["label"]
+            # Update name to reflect the current label
+            self._attr_name = self._output_label
             
         # Update current input if changed
         if "input" in output_data and output_data["input"] != self._current_input_id:

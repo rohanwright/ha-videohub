@@ -50,7 +50,7 @@ class BlackmagicVideohub(asyncio.Protocol):
     
     def connection_made(self, transport):
         """asyncio callback for a successful connection."""
-        _LOGGER.info("Connected to Blackmagic Smart Videohub at %s:%s", 
+        _LOGGER.info("Connected to Blackmagic Videohub at %s:%s", 
                      self._cmdServer, self._cmdServerPort)
         self._transport = transport
         self._connected = True
@@ -295,7 +295,7 @@ class BlackmagicVideohub(asyncio.Protocol):
     
     def start(self) -> None:
         """Start connection to the Videohub device."""
-        _LOGGER.info("Connecting to Smart Videohub at %s:%s", self._cmdServer, self._cmdServerPort)
+        _LOGGER.info("Connecting to Videohub at %s:%s", self._cmdServer, self._cmdServerPort)
         self._connecting = True
         self._allow_reconnect = True  # Reset reconnect flag when explicitly starting
         
@@ -315,7 +315,7 @@ class BlackmagicVideohub(asyncio.Protocol):
         Args:
             allow_reconnect: Whether to allow automatic reconnection attempts
         """
-        _LOGGER.info("Stopping connection to Smart Videohub (allow_reconnect=%s)", allow_reconnect)
+        _LOGGER.info("Stopping connection to Videohub (allow_reconnect=%s)", allow_reconnect)
         
         # Set flags to control connection behavior
         self._connected = False

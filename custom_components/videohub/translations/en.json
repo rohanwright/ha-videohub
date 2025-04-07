@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to your Blackmagic Videohub",
-        "description": "Set up your Blackmagic Videohub to control it with Home Assistant",
+        "title": "Connect to Blackmagic Videohub",
+        "description": "Set up your Videohub integration",
         "data": {
           "host": "IP Address",
           "port": "Port",
@@ -12,21 +12,21 @@
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to Blackmagic Videohub",
-      "no_outputs": "No outputs found on the device",
-      "unknown": "Unexpected error"
+      "cannot_connect": "Failed to connect to the device. Please verify it is powered on and reachable.",
+      "no_outputs": "No outputs found on the Videohub device. Please check the device configuration.",
+      "unknown": "Unexpected error occurred during connection."
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "This Videohub device is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Blackmagic Videohub Options",
-        "description": "Configure options for your Blackmagic Videohub",
+        "title": "Videohub Options",
+        "description": "Configure options for your Videohub device",
         "data": {
-          "init_timeout": "Initialization timeout (seconds)"
+          "init_timeout": "Initialization timeout in seconds"
         }
       }
     }

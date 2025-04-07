@@ -1,4 +1,4 @@
-"""Config flow for Smart Videohub integration."""
+"""Config flow for Blackmagic Videohub integration."""
 from __future__ import annotations
 
 import asyncio
@@ -45,12 +45,12 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    from .pyvideohub import SmartVideoHub
+    from .pyvideohub import BlackmagicVideohub
 
-    hub = SmartVideoHub(data[CONF_HOST], data[CONF_PORT], hass.loop)
+    hub = BlackmagicVideohub(data[CONF_HOST], data[CONF_PORT], hass.loop)
     
     try:
-        _LOGGER.info("Attempting to connect to Smart Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
+        _LOGGER.info("Attempting to connect to Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
         hub.start()
         
         # Set timeout for initialization
@@ -64,7 +64,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         # First wait for connection to be established
         while not hub.connected:
             if asyncio.get_event_loop().time() - connection_start_time > connection_timeout:
-                _LOGGER.error("Connection timed out to Smart Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
+                _LOGGER.error("Connection timed out to Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
                 raise CannotConnect(f"Connection timed out after {connection_timeout} seconds - please check network settings")
             
             await asyncio.sleep(0.5)  # Check more frequently
@@ -74,11 +74,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         # Then wait for initialization to complete
         while not hub.is_initialised:
             if not hub.connected:
-                _LOGGER.error("Connection lost to Smart Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
+                _LOGGER.error("Connection lost to Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
                 raise CannotConnect(f"Connection established but then lost to {data[CONF_HOST]}:{data[CONF_PORT]}")
                 
             if asyncio.get_event_loop().time() - start_time > init_timeout:
-                _LOGGER.error("Initialization timed out for Smart Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
+                _LOGGER.error("Initialization timed out for Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
                 raise CannotConnect(f"Connected but initialization timed out after {init_timeout} seconds. Try increasing the timeout or check device compatibility.")
             
             await asyncio.sleep(0.5)  # Check more frequently
@@ -131,13 +131,13 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         }
     
     except ConnectionRefusedError:
-        _LOGGER.error("Connection refused to Smart Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
+        _LOGGER.error("Connection refused to Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
         raise CannotConnect(f"Connection refused - please check if device is online at {data[CONF_HOST]}:{data[CONF_PORT]}")
     except asyncio.TimeoutError:
-        _LOGGER.error("Connection timed out to Smart Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
+        _LOGGER.error("Connection timed out to Videohub at %s:%s", data[CONF_HOST], data[CONF_PORT])
         raise CannotConnect(f"Connection timed out - please check network settings and device IP")
     except Exception as ex:
-        _LOGGER.error("Error connecting to Smart Videohub: %s", str(ex))
+        _LOGGER.error("Error connecting to Videohub: %s", str(ex))
         raise CannotConnect from ex
     finally:
         # Important: When stopping during config flow validation, don't allow reconnect
@@ -145,8 +145,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             hub.stop(allow_reconnect=False)
 
 
-class SmartVideohubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Smart Videohub."""
+class BlackmagicVideohubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Videohub."""
 
     VERSION = 2  # Updated version to support the enhanced configuration model
 
@@ -179,11 +179,11 @@ class SmartVideohubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return SmartVideohubOptionsFlow(config_entry)
+        return BlackmagicVideohubOptionsFlow(config_entry)
 
 
-class SmartVideohubOptionsFlow(config_entries.OptionsFlow):
-    """Handle options for the Smart Videohub component."""
+class BlackmagicVideohubOptionsFlow(config_entries.OptionsFlow):
+    """Handle options for the Videohub component."""
 
     def __init__(self, config_entry):
         """Initialize options flow."""

@@ -1,4 +1,4 @@
-"""Smart Videohub integration for controlling Blackmagic Smart Videohub devices."""
+"""Blackmagic Videohub integration for controlling Blackmagic Videohub devices."""
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +16,7 @@ import voluptuous as vol
 
 from .const import (
     DOMAIN,
-    DATA_SMARTVIDEOHUB,
+    DATA_VIDEOHUB,
     DATA_COORDINATOR,
     CONF_INIT_TIMEOUT,
     DEFAULT_RECONNECT_DELAY,
@@ -24,7 +24,7 @@ from .const import (
     SERVICE_SET_OUTPUT_LABEL,
     SERVICE_SET_INPUT_LABEL,
 )
-from .pyvideohub import SmartVideoHub
+from .pyvideohub import BlackmagicVideohub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,83 +49,83 @@ SET_INPUT_LABEL_SCHEMA = vol.Schema({
 })
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Smart Videohub component from YAML configuration."""
+    """Set up the Videohub component from YAML configuration."""
     # Initialize the domain data structure
     hass.data.setdefault(DOMAIN, {})
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Smart Videohub from a config entry."""
+    """Set up Videohub from a config entry."""
     host = entry.data[CONF_HOST]
     port = entry.data[CONF_PORT]
     name = entry.data[CONF_NAME]
     init_timeout = entry.options.get(CONF_INIT_TIMEOUT, 30)
 
-    _LOGGER.info("Establishing connection with SmartVideoHub at %s:%i", host, port)
-    smartvideohub = SmartVideoHub(host, port, hass.loop)
+    _LOGGER.info("Establishing connection with Videohub at %s:%i", host, port)
+    videohub = BlackmagicVideohub(host, port, hass.loop)
     
     # Start the connection
-    smartvideohub.start()
+    videohub.start()
     
     # Wait for initialization with timeout
     start_time = asyncio.get_event_loop().time()
     initialization_complete = False
     
     # First, wait for connection
-    while not smartvideohub.connected:
+    while not videohub.connected:
         if asyncio.get_event_loop().time() - start_time > 10:  # 10 second connection timeout
             _LOGGER.warning("Timeout waiting for Videohub connection")
             # Don't abort setup - the coordinator will retry
             break
         await asyncio.sleep(1)
     
-    if smartvideohub.connected:
+    if videohub.connected:
         _LOGGER.info("Connected to Videohub, waiting for initialization")
         
         # Now wait for initialization
-        while not smartvideohub.is_initialised:
+        while not videohub.is_initialised:
             if asyncio.get_event_loop().time() - start_time > init_timeout:
                 _LOGGER.warning("Timeout waiting for Videohub initialization")
                 # Don't abort setup - entities will be marked unavailable
                 break
                 
-            if not smartvideohub.connected:
+            if not videohub.connected:
                 _LOGGER.warning("Lost connection while waiting for initialization")
                 break
                 
             await asyncio.sleep(1)
             
         # If we get here and the device is initialized, consider initialization complete
-        initialization_complete = smartvideohub.is_initialised
+        initialization_complete = videohub.is_initialised
         
     # Even if initialization failed, try to create coordinator
     async def async_update_data():
-        """Fetch data from the VideoHub device."""
+        """Fetch data from the Videohub device."""
         try:
-            if not smartvideohub.connected:
-                raise UpdateFailed("VideoHub connection lost")
+            if not videohub.connected:
+                raise UpdateFailed("Videohub connection lost")
             
             # Get one-based outputs and inputs for external use
-            outputs = smartvideohub.get_outputs()
-            inputs = smartvideohub.get_inputs()
+            outputs = videohub.get_outputs()
+            inputs = videohub.get_inputs()
             
             # Request fresh data if no outputs but we're connected
-            if not outputs and smartvideohub.connected:
+            if not outputs and videohub.connected:
                 _LOGGER.debug("No outputs in coordinator update - requesting refresh")
-                await smartvideohub.request_status_dump("VIDEO OUTPUT ROUTING")
+                await videohub.request_status_dump("VIDEO OUTPUT ROUTING")
                 await asyncio.sleep(0.5)
-                outputs = smartvideohub.get_outputs()
+                outputs = videohub.get_outputs()
             
             # Prepare data for components
             data = {
-                "connected": smartvideohub.connected,
-                "initialized": smartvideohub.is_initialised,
+                "connected": videohub.connected,
+                "initialized": videohub.is_initialised,
                 "inputs": inputs,
                 "outputs": outputs,
                 "device_info": {
-                    "model_name": smartvideohub.model_name,
-                    "video_inputs_count": smartvideohub.video_inputs_count,
-                    "video_outputs_count": smartvideohub.video_outputs_count,
+                    "model_name": videohub.model_name,
+                    "video_inputs_count": videohub.video_inputs_count,
+                    "video_outputs_count": videohub.video_outputs_count,
                 },
             }
             
@@ -154,7 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store data in hass
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
-        DATA_SMARTVIDEOHUB: smartvideohub,
+        DATA_VIDEOHUB: videohub,
         DATA_COORDINATOR: coordinator,
         "name": name,
     }
@@ -166,7 +166,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.async_create_task(coordinator.async_refresh())
 
     # Add callback to hub
-    smartvideohub.add_update_callback(hub_update_callback)
+    videohub.add_update_callback(hub_update_callback)
     
     # Initial manual refresh to ensure we have data
     await coordinator.async_refresh()
@@ -179,14 +179,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.warning("No outputs in coordinator data after initial refresh - requesting data manually")
         
         # Request key data directly
-        if smartvideohub.connected:
-            await smartvideohub.request_status_dump("VIDEOHUB DEVICE")
+        if videohub.connected:
+            await videohub.request_status_dump("VIDEOHUB DEVICE")
             await asyncio.sleep(0.5)
-            await smartvideohub.request_status_dump("INPUT LABELS")
+            await videohub.request_status_dump("INPUT LABELS")
             await asyncio.sleep(0.5)
-            await smartvideohub.request_status_dump("OUTPUT LABELS")
+            await videohub.request_status_dump("OUTPUT LABELS")
             await asyncio.sleep(0.5)
-            await smartvideohub.request_status_dump("VIDEO OUTPUT ROUTING")
+            await videohub.request_status_dump("VIDEO OUTPUT ROUTING")
             await asyncio.sleep(1)
             
             # Update coordinator after manual requests
@@ -225,10 +225,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # First, try to stop the hub connection regardless of whether unload succeeds
     if entry.entry_id in hass.data[DOMAIN]:
-        hub = hass.data[DOMAIN][entry.entry_id].get(DATA_SMARTVIDEOHUB)
+        hub = hass.data[DOMAIN][entry.entry_id].get(DATA_VIDEOHUB)
         if hub:
             # Log the connection state before stopping
-            _LOGGER.info("Shutting down VideoHub connection (currently %s)", 
+            _LOGGER.info("Shutting down Videohub connection (currently %s)", 
                         "connected" if hub.connected else "disconnected")
             # Stop the connection - set allow_reconnect=False since we're unloading
             hub.stop(allow_reconnect=False)
@@ -237,11 +237,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             
             # Verify it's actually stopped
             if hub.connected:
-                _LOGGER.warning("VideoHub connection didn't close properly, forcing transport closure")
+                _LOGGER.warning("Videohub connection didn't close properly, forcing transport closure")
                 if hasattr(hub, '_transport') and hub._transport:
                     hub._transport.abort()
             else:
-                _LOGGER.info("VideoHub connection successfully closed")
+                _LOGGER.info("Videohub connection successfully closed")
                 
     # Now unload the platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
@@ -257,7 +257,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if entry.entry_id in hass.data[DOMAIN]:
             hass.data[DOMAIN].pop(entry.entry_id)
     else:
-        _LOGGER.warning("Failed to unload platforms for VideoHub integration")
+        _LOGGER.warning("Failed to unload platforms for Videohub integration")
             
     return unload_ok
 
@@ -283,17 +283,17 @@ async def handle_set_input(call: ServiceCall) -> None:
         
     hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
     if not hub_data:
-        _LOGGER.error("No VideoHub associated with entity %s", entity_id)
+        _LOGGER.error("No Videohub associated with entity %s", entity_id)
         return
         
-    hub = hub_data[DATA_SMARTVIDEOHUB]
+    hub = hub_data[DATA_VIDEOHUB]
     coordinator = hub_data[DATA_COORDINATOR]
     
     # Extract output number from unique_id
     # Format is: entry_id_output_NNN (where NNN is zero-padded)
     unique_id_parts = entity_entry.unique_id.split("_")
     if len(unique_id_parts) < 3 or unique_id_parts[-2] != "output":
-        _LOGGER.error("Entity %s is not a VideoHub output entity", entity_id)
+        _LOGGER.error("Entity %s is not a Videohub output entity", entity_id)
         return
         
     try:
@@ -336,15 +336,15 @@ async def handle_set_output_label(call: ServiceCall) -> None:
         
     hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
     if not hub_data:
-        _LOGGER.error("No VideoHub associated with entity %s", entity_id)
+        _LOGGER.error("No Videohub associated with entity %s", entity_id)
         return
         
-    hub = hub_data[DATA_SMARTVIDEOHUB]
+    hub = hub_data[DATA_VIDEOHUB]
     
     # Extract output number from unique_id
     unique_id_parts = entity_entry.unique_id.split("_")
     if len(unique_id_parts) < 3 or unique_id_parts[-2] != "output":
-        _LOGGER.error("Entity %s is not a VideoHub output entity", entity_id)
+        _LOGGER.error("Entity %s is not a Videohub output entity", entity_id)
         return
         
     try:
@@ -374,10 +374,10 @@ async def handle_set_input_label(call: ServiceCall) -> None:
         
     hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
     if not hub_data:
-        _LOGGER.error("No VideoHub associated with entity %s", entity_id)
+        _LOGGER.error("No Videohub associated with entity %s", entity_id)
         return
         
-    hub = hub_data[DATA_SMARTVIDEOHUB]
+    hub = hub_data[DATA_VIDEOHUB]
     
     success = hub.set_input_label(input_number, label)
     if not success:

@@ -48,10 +48,8 @@ set_input_label:
         text:
     input:
       name: Input
-      description: The input number to relabel.
+      description: The input number to relabel. Can be an input number, or the full input name.
       required: true
-      example: 1
+      example: "1 or Camera 1"
       selector:
-        number:
-          min: 1
-          mode: box
+        text:

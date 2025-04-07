@@ -1,5 +1,7 @@
 {
     "name": "Blackmagic Videohub",
     "domain": "videohub",
-    "render_readme": true
+    "render_readme": true,
+    "zip_release": false,
+    "homeassistant": "2024.11.0"
 }
