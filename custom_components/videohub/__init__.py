@@ -383,5 +383,7 @@ async def handle_set_input_label(call: ServiceCall) -> None:
     if not success:
         _LOGGER.error("Failed to set label for input %s", input_number)
     else:
-        # Refresh coordinator data after successful operation
+        _LOGGER.info("Successfully set label '%s' for input %s, refreshing entities", label, input_number)
+        # Force the coordinator to refresh immediately
+        coordinator = hub_data[DATA_COORDINATOR]
         await coordinator.async_refresh()

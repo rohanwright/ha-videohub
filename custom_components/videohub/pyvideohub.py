@@ -214,12 +214,18 @@ class BlackmagicVideohub(asyncio.Protocol):
     
     def _process_input_labels(self, lines: List[str]) -> None:
         """Process input labels block."""
+        updated_input_ids = []
+        
         for line in lines:
             parts = line.split(" ", 1)
             if len(parts) == 2:
                 try:
                     input_id = int(parts[0])  # This is zero-based from protocol
                     label = parts[1].strip()
+                    
+                    # Check if this input exists and label has changed
+                    label_changed = (input_id not in self.inputs or 
+                                    self.inputs[input_id].get("label") != label)
                     
                     # Store with the zero-based ID
                     display_id = input_id + 1  # Convert to 1-based for display
@@ -232,8 +238,18 @@ class BlackmagicVideohub(asyncio.Protocol):
                     }
                     
                     _LOGGER.debug("Input %d: %s", display_id, label)
+                    
+                    # If label changed, add to list of updated inputs
+                    if label_changed:
+                        updated_input_ids.append(input_id)
+                        
                 except ValueError:
                     _LOGGER.warning("Invalid input label line: %s", line)
+        
+        # If any input labels were updated, notify callbacks
+        if updated_input_ids:
+            _LOGGER.info("Input labels updated, notifying callbacks")
+            self._send_update_callback()
     
     def _process_output_labels(self, lines: List[str]) -> None:
         """Process output labels block."""

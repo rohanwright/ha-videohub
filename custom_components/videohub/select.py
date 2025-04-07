@@ -163,14 +163,15 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         # Update output label if changed
         if "label" in output_data and output_data["label"] != self._output_label:
             self._output_label = output_data["label"]
-            # Update name to reflect the current label
-            self._attr_name = self._output_label
+            # Update name to reflect the current label while maintaining format
+            display_id = self._output_id  # This is already one-based
+            self._attr_name = f"Output {display_id} - {self._output_label}"
             
         # Update current input if changed
         if "input" in output_data and output_data["input"] != self._current_input_id:
             self._current_input_id = output_data["input"]
             
-        # Refresh options and current selection
+        # Always update options when coordinator refreshes to catch input name changes
         self._update_options()
         
         # Update entity state
