@@ -76,14 +76,12 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         
         # Set entity attributes
         self._attr_unique_id = f"{entry_id}_{safe_device_name}_output_{output_id:03d}"
-        
+
+        # Explicitly set the entity_id (without the label)
+        self.entity_id = f"select.{safe_device_name}_output_{output_id:03d}"
+
         # Use consistent naming format that includes the label
         self._attr_name = f"{safe_device_name} Output {output_id} - {self._output_label}"
-        
-        # Make suggested object ID include device name to avoid conflicts with multiple devices
-        # Use slugified device name to ensure valid entity ID format
-        
-        self._attr_suggested_object_id = f"{safe_device_name}_output_{output_id:03d}"
         
         # Initialize options list
         self._update_options()
@@ -97,6 +95,8 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
             model=model,
             configuration_url=f"http://{hub._cmdServer}:{hub._cmdServerPort}",
         )
+        
+
 
     def _update_options(self) -> None:
         """Update the list of input options."""
