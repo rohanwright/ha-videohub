@@ -58,7 +58,7 @@ Sets a custom label for an output.
 
 ### `videohub.set_input_label`
 Sets a custom label for an input.
-- **entity_id**: Any entity from this integration (used to identify the device)
+- **device_id**: The Videohub device that we want to update the label for
 - **input**: The input number to rename
 - **label**: The new name for the input
 

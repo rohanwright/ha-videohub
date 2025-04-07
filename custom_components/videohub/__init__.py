@@ -271,7 +271,16 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
 
 async def handle_set_input(call: ServiceCall) -> None:
     """Handle the service call to set an input."""
-    entity_id = call.data.get("entity_id")
+    # Get entity_id from the target instead of data
+    entity_ids = call.target.get("entity_id")
+    
+    if not entity_ids:
+        _LOGGER.error("No target entity provided for set_input service")
+        return
+    
+    # Use first entity if multiple were provided
+    entity_id = entity_ids[0] if isinstance(entity_ids, list) else entity_ids
+    
     input_value = call.data.get("input")
     
     entity_registry = er.async_get(hass)
@@ -316,6 +325,7 @@ async def handle_set_input(call: ServiceCall) -> None:
         if not success:
             _LOGGER.error("Failed to set input %s for output %s", input_value, output_number)
         else:
+            _LOGGER.info("Successfully set input %s for output %s", input_value, output_number)
             # Refresh coordinator data after successful operation
             await coordinator.async_refresh()
     except ValueError:
@@ -324,7 +334,16 @@ async def handle_set_input(call: ServiceCall) -> None:
 
 async def handle_set_output_label(call: ServiceCall) -> None:
     """Handle the service call to set an output label."""
-    entity_id = call.data.get("entity_id")
+    # Get entity_id from the target instead of data
+    entity_ids = call.target.get("entity_id")
+    
+    if not entity_ids:
+        _LOGGER.error("No target entity provided for set_output_label service")
+        return
+    
+    # Use first entity if multiple were provided
+    entity_id = entity_ids[0] if isinstance(entity_ids, list) else entity_ids
+    
     label = call.data.get("label")
     
     entity_registry = er.async_get(hass)
@@ -340,6 +359,7 @@ async def handle_set_output_label(call: ServiceCall) -> None:
         return
         
     hub = hub_data[DATA_VIDEOHUB]
+    coordinator = hub_data[DATA_COORDINATOR]
     
     # Extract output number from unique_id
     unique_id_parts = entity_entry.unique_id.split("_")
@@ -350,10 +370,12 @@ async def handle_set_output_label(call: ServiceCall) -> None:
     try:
         # Strip leading zeros when converting to int
         output_number = int(unique_id_parts[-1])
+        _LOGGER.debug("Setting label '%s' for output %s", label, output_number)
         success = hub.set_output_label(output_number, label)
         if not success:
             _LOGGER.error("Failed to set label for output %s", output_number)
         else:
+            _LOGGER.info("Successfully set label '%s' for output %s", label, output_number)
             # Refresh coordinator data after successful operation
             await coordinator.async_refresh()
     except ValueError:
@@ -361,23 +383,42 @@ async def handle_set_output_label(call: ServiceCall) -> None:
 
 async def handle_set_input_label(call: ServiceCall) -> None:
     """Handle the service call to set an input label."""
-    entity_id = call.data.get("entity_id")
+    device_ids = call.target.get("device_id")
     label = call.data.get("label")
-    input_number = call.data.get("input")  # Now properly defined in the schema
+    input_number = call.data.get("input")
     
-    entity_registry = er.async_get(hass)
-    entity_entry = entity_registry.async_get(entity_id)
+    if not device_ids:
+        _LOGGER.error("No target device provided for set_input_label service")
+        return
     
-    if not entity_entry or not entity_entry.config_entry_id:
-        _LOGGER.error("Entity %s not found or not from this integration", entity_id)
+    device_id = device_ids[0] if isinstance(device_ids, list) else device_ids
+    
+    # Get device registry to find config entry associated with device
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get(device_id)
+    
+    if not device:
+        _LOGGER.error("Device %s not found", device_id)
         return
         
-    hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
+    # Get config entry for this device
+    config_entry_id = None
+    for entry_id in device.config_entries:
+        if entry_id in hass.data.get(DOMAIN, {}):
+            config_entry_id = entry_id
+            break
+    
+    if not config_entry_id:
+        _LOGGER.error("No Videohub config entry found for device %s", device_id)
+        return
+        
+    hub_data = hass.data[DOMAIN].get(config_entry_id)
     if not hub_data:
-        _LOGGER.error("No Videohub associated with entity %s", entity_id)
+        _LOGGER.error("No Videohub data found for config entry %s", config_entry_id)
         return
         
     hub = hub_data[DATA_VIDEOHUB]
+    coordinator = hub_data[DATA_COORDINATOR]
     
     success = hub.set_input_label(input_number, label)
     if not success:
@@ -385,5 +426,4 @@ async def handle_set_input_label(call: ServiceCall) -> None:
     else:
         _LOGGER.info("Successfully set label '%s' for input %s, refreshing entities", label, input_number)
         # Force the coordinator to refresh immediately
-        coordinator = hub_data[DATA_COORDINATOR]
         await coordinator.async_refresh()

@@ -36,7 +36,7 @@ set_input_label:
   name: Set input label
   description: Set a label for a Videohub input.
   target:
-    entity:
+    device:
       integration: videohub
   fields:
     label:
