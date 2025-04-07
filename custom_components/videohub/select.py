@@ -81,7 +81,7 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         self.entity_id = f"select.{safe_device_name}_output_{output_id:03d}"
 
         # Use consistent naming format that includes the label
-        self._attr_name = f"{safe_device_name} Output {output_id} - {self._output_label}"
+        self._attr_name = f"{safe_device_name} Output {output_id:03d} - {self._output_label}"
         
         # Initialize options list
         self._update_options()
@@ -172,8 +172,8 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         if "label" in output_data and output_data["label"] != self._output_label:
             self._output_label = output_data["label"]
             # Update name to reflect the current label while maintaining format
-            display_id = self._output_id  # This is already one-based
-            self._attr_name = f"Output {display_id} - {self._output_label}"
+            safe_device_name = self._device_name.lower().replace(' ', '_')
+            self._attr_name = f"{safe_device_name} Output {self._output_id:03d} - {self._output_label}"
             
         # Update current input if changed
         if "input" in output_data and output_data["input"] != self._current_input_id:
