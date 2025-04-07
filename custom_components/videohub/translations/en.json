@@ -48,10 +48,6 @@
       "name": "Set Input",
       "description": "Sets the input for an output port.",
       "fields": {
-        "entity_id": {
-          "name": "Output Entity",
-          "description": "The output entity to set input for."
-        },
         "input": {
           "name": "Input",
           "description": "The input to set (can be just the input number or full name)."
@@ -62,10 +58,6 @@
       "name": "Set Output Label",
       "description": "Sets the label for an output port.",
       "fields": {
-        "entity_id": {
-          "name": "Output Entity",
-          "description": "The output entity to rename."
-        },
         "label": {
           "name": "Label",
           "description": "The new label for the output."
@@ -76,10 +68,6 @@
       "name": "Set Input Label",
       "description": "Sets the label for an input port.",
       "fields": {
-        "entity_id": {
-          "name": "Entity",
-          "description": "Any entity from the video hub to identify the device."
-        },
         "input": {
           "name": "Input",
           "description": "The input number to rename."
