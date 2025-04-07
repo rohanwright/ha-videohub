@@ -1,0 +1,57 @@
+# Blackmagic Videohub services
+
+set_input:
+  name: Set input
+  description: Set the input source for a Videohub output.
+  target:
+    entity:
+      integration: videohub
+      domain: select
+  fields:
+    input:
+      name: Input
+      description: The input to assign to the output. Can be an input number, or the full input name.
+      required: true
+      example: "1 or Camera 1"
+      selector:
+        text:
+
+set_output_label:
+  name: Set output label
+  description: Set a label for a Videohub output.
+  target:
+    entity:
+      integration: videohub
+      domain: select
+  fields:
+    label:
+      name: Label
+      description: The label to set for the output.
+      required: true
+      example: "Monitor 1"
+      selector:
+        text:
+
+set_input_label:
+  name: Set input label
+  description: Set a label for a Videohub input.
+  target:
+    entity:
+      integration: videohub
+  fields:
+    label:
+      name: Label
+      description: The label to set for the input.
+      required: true
+      example: "Camera 1"
+      selector:
+        text:
+    input:
+      name: Input
+      description: The input number to relabel.
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box

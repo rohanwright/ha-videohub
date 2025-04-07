@@ -1,0 +1,94 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to your Blackmagic Videohub",
+        "description": "Set up your Blackmagic Videohub to control it with Home Assistant",
+        "data": {
+          "host": "IP Address",
+          "port": "Port",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Blackmagic Videohub",
+      "no_outputs": "No outputs found on the device",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Blackmagic Videohub Options",
+        "description": "Configure options for your Blackmagic Videohub",
+        "data": {
+          "init_timeout": "Initialization timeout (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "connection_status": {
+        "name": "Connection Status",
+        "state": {
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "initializing": "Initializing"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_input": {
+      "name": "Set Input",
+      "description": "Sets the input for an output port.",
+      "fields": {
+        "entity_id": {
+          "name": "Output Entity",
+          "description": "The output entity to set input for."
+        },
+        "input": {
+          "name": "Input",
+          "description": "The input to set (can be just the input number or full name)."
+        }
+      }
+    },
+    "set_output_label": {
+      "name": "Set Output Label",
+      "description": "Sets the label for an output port.",
+      "fields": {
+        "entity_id": {
+          "name": "Output Entity",
+          "description": "The output entity to rename."
+        },
+        "label": {
+          "name": "Label",
+          "description": "The new label for the output."
+        }
+      }
+    },
+    "set_input_label": {
+      "name": "Set Input Label",
+      "description": "Sets the label for an input port.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Any entity from the video hub to identify the device."
+        },
+        "input": {
+          "name": "Input",
+          "description": "The input number to rename."
+        },
+        "label": {
+          "name": "Label",
+          "description": "The new label for the input."
+        }
+      }
+    }
+  }
+}
