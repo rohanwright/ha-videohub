@@ -68,14 +68,22 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         self._device_name = device_name
         self._entry_id = entry_id
         self._output_id = output_id  # This is one-based
-        
+        safe_device_name = device_name.lower().replace(' ', '_')
+
         # Get output information
         self._output_label = output_data.get("label", f"Output {output_id:03d}")
         self._current_input_id = output_data.get("input", 1)  # one-based
         
         # Set entity attributes
-        self._attr_unique_id = f"{entry_id}_output_{output_id:03d}"
-        self._attr_name = f"Output {output_id:03d}"
+        self._attr_unique_id = f"{entry_id}_{safe_device_name}_output_{output_id:03d}"
+        
+        # Use consistent naming format that includes the label
+        self._attr_name = f"{safe_device_name} Output {output_id} - {self._output_label}"
+        
+        # Make suggested object ID include device name to avoid conflicts with multiple devices
+        # Use slugified device name to ensure valid entity ID format
+        
+        self._attr_suggested_object_id = f"{safe_device_name}_output_{output_id:03d}"
         
         # Initialize options list
         self._update_options()

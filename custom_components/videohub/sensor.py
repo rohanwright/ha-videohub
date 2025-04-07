@@ -64,9 +64,14 @@ class ConnectionStatusSensor(CoordinatorEntity, SensorEntity):
         self._hub = hub
         self._name = name
         self._entry_id = entry_id
-        
+        safe_name = name.lower().replace(' ', '_')
+
         # Set unique ID and device info
-        self._attr_unique_id = f"{entry_id}_connection_status"
+        self._attr_unique_id = f"{entry_id}_{safe_name}_connection_status"
+        
+        # Add suggested object ID to prevent conflicts with multiple devices
+        
+        self._attr_suggested_object_id = f"{safe_name}_connection_status"
         
         # Set device info
         model = hub.model_name if hub.model_name else "Blackmagic Videohub"
@@ -75,7 +80,6 @@ class ConnectionStatusSensor(CoordinatorEntity, SensorEntity):
             name=name,
             manufacturer="Blackmagic Design",
             model=model,
-            configuration_url=f"http://{hub._cmdServer}:{hub._cmdServerPort}",
         )
         
     @property

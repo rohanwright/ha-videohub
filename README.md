@@ -9,6 +9,7 @@ Each output of your Videohub will be represented as a select entity in Home Assi
 ## Features
 
 - **Source Selection**: Change which input is routed to each output
+- **Multiple Devices**: Support for multiple Videohub devices in a single Home Assistant instance
 - **Name Customization**: Set custom names for inputs and outputs
 - **Connection Status**: Monitor connection state with the device
 - **Real-time Updates**: Changes made on the device are reflected in Home Assistant
