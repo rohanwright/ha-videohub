@@ -33,17 +33,14 @@ PLATFORMS = [Platform.SENSOR, Platform.SELECT]
 
 # Service schemas
 SET_INPUT_SCHEMA = vol.Schema({
-    vol.Required("entity_id"): str,
     vol.Required("input"): vol.Any(int, str),
 })
 
 SET_LABEL_SCHEMA = vol.Schema({
-    vol.Required("entity_id"): str,
     vol.Required("label"): str, 
 })
 
 SET_INPUT_LABEL_SCHEMA = vol.Schema({
-    vol.Required("entity_id"): str,
     vol.Required("input"): vol.Any(int, str),
     vol.Required("label"): str,
 })
@@ -214,7 +211,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN, 
             SERVICE_SET_INPUT_LABEL, 
             handle_set_input_label, 
-            schema=SET_INPUT_LABEL_SCHEMA  # Use the correct schema here
+            schema=SET_INPUT_LABEL_SCHEMA
         )
 
     # Set up all platform entities
