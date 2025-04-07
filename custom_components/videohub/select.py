@@ -82,6 +82,9 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
 
         # Just use Output ID and label since device name will be prepended automatically
         self._attr_name = f"Output {output_id:03d} - {self._output_label}"
+        # Explicitly set friendly name for device view
+        self._attr_translation_key = None  # Ensure no translation key is used
+        self._attr_friendly_name = self._attr_name
         
         # Initialize options list
         self._update_options()
@@ -93,7 +96,6 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
             name=device_name,
             manufacturer="Blackmagic Design",
             model=model,
-            configuration_url=f"http://{hub._cmdServer}:{hub._cmdServerPort}",
         )
         
 
@@ -171,8 +173,9 @@ class BlackmagicVideohubOutputSelect(CoordinatorEntity, SelectEntity):
         # Update output label if changed
         if "label" in output_data and output_data["label"] != self._output_label:
             self._output_label = output_data["label"]
-            # Don't include device name since it's automatically prepended
+            # Set both name and friendly_name
             self._attr_name = f"Output {self._output_id:03d} - {self._output_label}"
+            self._attr_friendly_name = self._attr_name
             
         # Update current input if changed
         if "input" in output_data and output_data["input"] != self._current_input_id:
