@@ -45,6 +45,190 @@ SET_INPUT_LABEL_SCHEMA = vol.Schema({
     vol.Required("label"): str,
 })
 
+# Define the service handler functions before they are registered
+async def handle_set_input(call: ServiceCall) -> None:
+    """Handle the service call to set an input."""
+    # Get entity_id from the target
+    entity_id = call.target.get("entity_id")
+    
+    if not entity_id:
+        _LOGGER.error("No target entity provided for set_input service")
+        return
+    
+    input_value = call.data.get("input")
+    _LOGGER.debug("Set input service called for %s with input %s", entity_id, input_value)
+    
+    entity_registry = er.async_get(hass)
+    entity_entry = entity_registry.async_get(entity_id)
+    
+    if not entity_entry or not entity_entry.config_entry_id:
+        _LOGGER.error("Entity %s not found or not from this integration", entity_id)
+        return
+        
+    hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
+    if not hub_data:
+        _LOGGER.error("No Videohub associated with entity %s", entity_id)
+        return
+        
+    hub = hub_data[DATA_VIDEOHUB]
+    coordinator = hub_data[DATA_COORDINATOR]
+    
+    # Extract output number from unique_id
+    # Format is: entry_id_output_NNN (where NNN is zero-padded)
+    unique_id_parts = entity_entry.unique_id.split("_")
+    if len(unique_id_parts) < 3 or unique_id_parts[-2] != "output":
+        _LOGGER.error("Entity %s is not a Videohub output entity (unique_id: %s)", 
+                     entity_id, entity_entry.unique_id)
+        return
+        
+    try:
+        # Log the unique_id for debugging
+        _LOGGER.debug("Processing entity with unique_id: %s", entity_entry.unique_id)
+        
+        # Strip leading zeros when converting to int
+        output_number = int(unique_id_parts[-1])
+        
+        # Handle input as number or name
+        if isinstance(input_value, int):
+            success = hub.set_input(output_number, input_value)
+        else:
+            # For string inputs, check if it's just a number
+            if isinstance(input_value, str) and input_value.isdigit():
+                success = hub.set_input(output_number, int(input_value))
+            else:
+                success = hub.set_input_by_name(output_number, input_value)
+            
+        if not success:
+            _LOGGER.error("Failed to set input %s for output %s", input_value, output_number)
+        else:
+            _LOGGER.info("Successfully set input %s for output %s", input_value, output_number)
+            # Refresh coordinator data after successful operation
+            await coordinator.async_refresh()
+    except ValueError as err:
+        _LOGGER.error("Invalid output ID format in entity %s with unique_id %s: %s", 
+                     entity_id, entity_entry.unique_id, str(err))
+    except Exception as ex:
+        _LOGGER.error("Error in set_input service: %s", str(ex), exc_info=True)
+
+async def handle_set_output_label(call: ServiceCall) -> None:
+    """Handle the service call to set an output label."""
+    # Get entity_id from the target
+    entity_id = call.target.get("entity_id")
+    
+    if not entity_id:
+        _LOGGER.error("No target entity provided for set_output_label service")
+        return
+    
+    label = call.data.get("label")
+    _LOGGER.debug("Set output label service called for %s with label %s", entity_id, label)
+    
+    entity_registry = er.async_get(hass)
+    entity_entry = entity_registry.async_get(entity_id)
+    
+    if not entity_entry or not entity_entry.config_entry_id:
+        _LOGGER.error("Entity %s not found or not from this integration", entity_id)
+        return
+        
+    hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
+    if not hub_data:
+        _LOGGER.error("No Videohub associated with entity %s", entity_id)
+        return
+        
+    hub = hub_data[DATA_VIDEOHUB]
+    coordinator = hub_data[DATA_COORDINATOR]
+    
+    # Extract output number from unique_id
+    unique_id_parts = entity_entry.unique_id.split("_")
+    if len(unique_id_parts) < 3 or unique_id_parts[-2] != "output":
+        _LOGGER.error("Entity %s is not a Videohub output entity (unique_id: %s)", 
+                     entity_id, entity_entry.unique_id)
+        return
+        
+    try:
+        # Strip leading zeros when converting to int
+        output_number = int(unique_id_parts[-1])
+        _LOGGER.debug("Setting label '%s' for output %s", label, output_number)
+        success = hub.set_output_label(output_number, label)
+        if not success:
+            _LOGGER.error("Failed to set label for output %s", output_number)
+        else:
+            _LOGGER.info("Successfully set label '%s' for output %s", label, output_number)
+            # Refresh coordinator data after successful operation
+            await coordinator.async_refresh()
+    except ValueError as err:
+        _LOGGER.error("Invalid output ID format in entity %s: %s", entity_id, str(err))
+    except Exception as ex:
+        _LOGGER.error("Error in set_output_label service: %s", str(ex), exc_info=True)
+
+async def handle_set_input_label(call: ServiceCall) -> None:
+    """Handle the service call to set an input label."""
+    device_id = call.target.get("device_id")
+    
+    if not device_id:
+        _LOGGER.error("No target device provided for set_input_label service")
+        return
+    
+    label = call.data.get("label")
+    input_value = call.data.get("input")
+    _LOGGER.debug("Set input label service called for device %s with input %s, label: %s", 
+                 device_id, input_value, label)
+    
+    # Get device registry to find config entry associated with device
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get(device_id)
+    
+    if not device:
+        _LOGGER.error("Device %s not found", device_id)
+        return
+        
+    # Get config entry for this device
+    config_entry_id = None
+    for entry_id in device.config_entries:
+        if entry_id in hass.data.get(DOMAIN, {}):
+            config_entry_id = entry_id
+            break
+    
+    if not config_entry_id:
+        _LOGGER.error("No Videohub config entry found for device %s", device_id)
+        return
+        
+    hub_data = hass.data[DOMAIN].get(config_entry_id)
+    if not hub_data:
+        _LOGGER.error("No Videohub data found for config entry %s", config_entry_id)
+        return
+        
+    hub = hub_data[DATA_VIDEOHUB]
+    coordinator = hub_data[DATA_COORDINATOR]
+    
+    # Handle input as number or name
+    input_number = None
+    if isinstance(input_value, int):
+        input_number = input_value
+    elif isinstance(input_value, str):
+        if input_value.isdigit():
+            input_number = int(input_value)
+        else:
+            # For non-numeric inputs, find the input by name
+            for num, name in coordinator.data.get("inputs", {}).items():
+                if name == input_value:
+                    input_number = num
+                    break
+    
+    if input_number is None:
+        _LOGGER.error("Could not determine input number from value: %s", input_value)
+        return
+    
+    try:
+        success = hub.set_input_label(input_number, label)
+        if not success:
+            _LOGGER.error("Failed to set label for input %s", input_number)
+        else:
+            _LOGGER.info("Successfully set label '%s' for input %s", label, input_number)
+            # Force the coordinator to refresh immediately
+            await coordinator.async_refresh()
+    except Exception as ex:
+        _LOGGER.error("Error in set_input_label service: %s", str(ex), exc_info=True)
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Videohub component from YAML configuration."""
     # Initialize the domain data structure
@@ -306,187 +490,3 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     version = config_entry.version
 
     return True
-
-
-async def handle_set_input(call: ServiceCall) -> None:
-    """Handle the service call to set an input."""
-    # Get entity_id from the target
-    entity_id = call.target.get("entity_id")
-    
-    if not entity_id:
-        _LOGGER.error("No target entity provided for set_input service")
-        return
-    
-    input_value = call.data.get("input")
-    _LOGGER.debug("Set input service called for %s with input %s", entity_id, input_value)
-    
-    entity_registry = er.async_get(hass)
-    entity_entry = entity_registry.async_get(entity_id)
-    
-    if not entity_entry or not entity_entry.config_entry_id:
-        _LOGGER.error("Entity %s not found or not from this integration", entity_id)
-        return
-        
-    hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
-    if not hub_data:
-        _LOGGER.error("No Videohub associated with entity %s", entity_id)
-        return
-        
-    hub = hub_data[DATA_VIDEOHUB]
-    coordinator = hub_data[DATA_COORDINATOR]
-    
-    # Extract output number from unique_id
-    # Format is: entry_id_output_NNN (where NNN is zero-padded)
-    unique_id_parts = entity_entry.unique_id.split("_")
-    if len(unique_id_parts) < 3 or unique_id_parts[-2] != "output":
-        _LOGGER.error("Entity %s is not a Videohub output entity (unique_id: %s)", 
-                     entity_id, entity_entry.unique_id)
-        return
-        
-    try:
-        # Log the unique_id for debugging
-        _LOGGER.debug("Processing entity with unique_id: %s", entity_entry.unique_id)
-        
-        # Strip leading zeros when converting to int
-        output_number = int(unique_id_parts[-1])
-        
-        # Handle input as number or name
-        if isinstance(input_value, int):
-            success = hub.set_input(output_number, input_value)
-        else:
-            # For string inputs, check if it's just a number
-            if isinstance(input_value, str) and input_value.isdigit():
-                success = hub.set_input(output_number, int(input_value))
-            else:
-                success = hub.set_input_by_name(output_number, input_value)
-            
-        if not success:
-            _LOGGER.error("Failed to set input %s for output %s", input_value, output_number)
-        else:
-            _LOGGER.info("Successfully set input %s for output %s", input_value, output_number)
-            # Refresh coordinator data after successful operation
-            await coordinator.async_refresh()
-    except ValueError as err:
-        _LOGGER.error("Invalid output ID format in entity %s with unique_id %s: %s", 
-                     entity_id, entity_entry.unique_id, str(err))
-    except Exception as ex:
-        _LOGGER.error("Error in set_input service: %s", str(ex), exc_info=True)
-
-async def handle_set_output_label(call: ServiceCall) -> None:
-    """Handle the service call to set an output label."""
-    # Get entity_id from the target
-    entity_id = call.target.get("entity_id")
-    
-    if not entity_id:
-        _LOGGER.error("No target entity provided for set_output_label service")
-        return
-    
-    label = call.data.get("label")
-    _LOGGER.debug("Set output label service called for %s with label %s", entity_id, label)
-    
-    entity_registry = er.async_get(hass)
-    entity_entry = entity_registry.async_get(entity_id)
-    
-    if not entity_entry or not entity_entry.config_entry_id:
-        _LOGGER.error("Entity %s not found or not from this integration", entity_id)
-        return
-        
-    hub_data = hass.data[DOMAIN].get(entity_entry.config_entry_id)
-    if not hub_data:
-        _LOGGER.error("No Videohub associated with entity %s", entity_id)
-        return
-        
-    hub = hub_data[DATA_VIDEOHUB]
-    coordinator = hub_data[DATA_COORDINATOR]
-    
-    # Extract output number from unique_id
-    unique_id_parts = entity_entry.unique_id.split("_")
-    if len(unique_id_parts) < 3 or unique_id_parts[-2] != "output":
-        _LOGGER.error("Entity %s is not a Videohub output entity (unique_id: %s)", 
-                     entity_id, entity_entry.unique_id)
-        return
-        
-    try:
-        # Strip leading zeros when converting to int
-        output_number = int(unique_id_parts[-1])
-        _LOGGER.debug("Setting label '%s' for output %s", label, output_number)
-        success = hub.set_output_label(output_number, label)
-        if not success:
-            _LOGGER.error("Failed to set label for output %s", output_number)
-        else:
-            _LOGGER.info("Successfully set label '%s' for output %s", label, output_number)
-            # Refresh coordinator data after successful operation
-            await coordinator.async_refresh()
-    except ValueError as err:
-        _LOGGER.error("Invalid output ID format in entity %s: %s", entity_id, str(err))
-    except Exception as ex:
-        _LOGGER.error("Error in set_output_label service: %s", str(ex), exc_info=True)
-
-async def handle_set_input_label(call: ServiceCall) -> None:
-    """Handle the service call to set an input label."""
-    device_id = call.target.get("device_id")
-    
-    if not device_id:
-        _LOGGER.error("No target device provided for set_input_label service")
-        return
-    
-    label = call.data.get("label")
-    input_value = call.data.get("input")
-    _LOGGER.debug("Set input label service called for device %s with input %s, label: %s", 
-                 device_id, input_value, label)
-    
-    # Get device registry to find config entry associated with device
-    device_registry = dr.async_get(hass)
-    device = device_registry.async_get(device_id)
-    
-    if not device:
-        _LOGGER.error("Device %s not found", device_id)
-        return
-        
-    # Get config entry for this device
-    config_entry_id = None
-    for entry_id in device.config_entries:
-        if entry_id in hass.data.get(DOMAIN, {}):
-            config_entry_id = entry_id
-            break
-    
-    if not config_entry_id:
-        _LOGGER.error("No Videohub config entry found for device %s", device_id)
-        return
-        
-    hub_data = hass.data[DOMAIN].get(config_entry_id)
-    if not hub_data:
-        _LOGGER.error("No Videohub data found for config entry %s", config_entry_id)
-        return
-        
-    hub = hub_data[DATA_VIDEOHUB]
-    coordinator = hub_data[DATA_COORDINATOR]
-    
-    # Handle input as number or name
-    input_number = None
-    if isinstance(input_value, int):
-        input_number = input_value
-    elif isinstance(input_value, str):
-        if input_value.isdigit():
-            input_number = int(input_value)
-        else:
-            # For non-numeric inputs, find the input by name
-            for num, name in coordinator.data.get("inputs", {}).items():
-                if name == input_value:
-                    input_number = num
-                    break
-    
-    if input_number is None:
-        _LOGGER.error("Could not determine input number from value: %s", input_value)
-        return
-    
-    try:
-        success = hub.set_input_label(input_number, label)
-        if not success:
-            _LOGGER.error("Failed to set label for input %s", input_number)
-        else:
-            _LOGGER.info("Successfully set label '%s' for input %s", label, input_number)
-            # Force the coordinator to refresh immediately
-            await coordinator.async_refresh()
-    except Exception as ex:
-        _LOGGER.error("Error in set_input_label service: %s", str(ex), exc_info=True)
