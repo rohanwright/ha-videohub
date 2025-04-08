@@ -192,26 +192,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                          len(coordinator.data.get("outputs", {})) if coordinator.data else 0)
 
     # Register services for the domain - always register to ensure services are updated
-    hass.services.async_register(
-        DOMAIN, 
-        SERVICE_SET_INPUT, 
-        handle_set_input, 
-        schema=SET_INPUT_SCHEMA
-    )
+    _LOGGER.info("Registering Videohub services")
     
-    hass.services.async_register(
-        DOMAIN, 
-        SERVICE_SET_OUTPUT_LABEL, 
-        handle_set_output_label, 
-        schema=SET_LABEL_SCHEMA
-    )
+    # Check if services already exist and remove them to ensure clean registration
+    for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
+        if hass.services.has_service(DOMAIN, service):
+            _LOGGER.debug("Service %s.%s already exists, will be updated", DOMAIN, service)
     
-    hass.services.async_register(
-        DOMAIN, 
-        SERVICE_SET_INPUT_LABEL, 
-        handle_set_input_label, 
-        schema=SET_INPUT_LABEL_SCHEMA
-    )
+    # Register all services
+    try:
+        hass.services.async_register(
+            DOMAIN, 
+            SERVICE_SET_INPUT, 
+            handle_set_input, 
+            schema=SET_INPUT_SCHEMA
+        )
+        
+        hass.services.async_register(
+            DOMAIN, 
+            SERVICE_SET_OUTPUT_LABEL, 
+            handle_set_output_label, 
+            schema=SET_LABEL_SCHEMA
+        )
+        
+        hass.services.async_register(
+            DOMAIN, 
+            SERVICE_SET_INPUT_LABEL, 
+            handle_set_input_label, 
+            schema=SET_INPUT_LABEL_SCHEMA
+        )
+        
+        # Verify registration was successful
+        all_services = True
+        for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
+            if not hass.services.has_service(DOMAIN, service):
+                all_services = False
+                _LOGGER.error("Failed to register service %s.%s", DOMAIN, service)
+                
+        if all_services:
+            _LOGGER.info("All Videohub services registered successfully")
+        else:
+            _LOGGER.warning("Some Videohub services failed to register")
+    
+    except Exception as ex:
+        _LOGGER.error("Error registering services: %s", str(ex))
 
     # Set up all platform entities
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -256,16 +280,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     if unload_ok:
         # Remove the current entry from data
-        if entry.entry_id in hass.data[DOMAIN]:
+        if entry.entry_id in hass.data.get(DOMAIN, {}):
             hass.data[DOMAIN].pop(entry.entry_id)
         
         # Check if this was the last entry AFTER removing the current one
-        if not hass.data[DOMAIN]:
+        if not hass.data.get(DOMAIN, {}):
             _LOGGER.info("Unloading last Videohub entry, removing services")
             for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
                 if hass.services.has_service(DOMAIN, service):
                     _LOGGER.debug("Removing service %s.%s", DOMAIN, service)
                     hass.services.async_remove(DOMAIN, service)
+                    # Add small delay to ensure service is fully removed
+                    await asyncio.sleep(0.1)
+            _LOGGER.info("All Videohub services have been removed")
         else:
             _LOGGER.debug("Other Videohub entries still exist, keeping services registered")
     else:

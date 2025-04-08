@@ -42,6 +42,9 @@ class BlackmagicVideohub(asyncio.Protocol):
         self.video_inputs_count: int = 0
         self.video_outputs_count: int = 0
         self.device_present: bool = False
+        
+        # Track which data blocks we've received
+        self._received_blocks: Set[str] = set()
 
         # Get event loop
         self._event_loop = loop if loop else asyncio.get_event_loop()
@@ -146,6 +149,9 @@ class BlackmagicVideohub(asyncio.Protocol):
     def _process_block(self, block_name: str, lines: List[str]) -> None:
         """Process a data block based on its name."""
         _LOGGER.debug("Processing block: %s (%d lines)", block_name, len(lines))
+        
+        # Track that we've received this block type
+        self._received_blocks.add(block_name)
         
         if block_name == "PROTOCOL PREAMBLE":
             for line in lines:
@@ -414,19 +420,34 @@ class BlackmagicVideohub(asyncio.Protocol):
         _LOGGER.info("Requesting initial data from Videohub")
         
         try:
-            # Request device information first
-            await self.request_status_dump("VIDEOHUB DEVICE")
-            await asyncio.sleep(0.5)
+            # Wait a moment to see what data the device sends automatically
+            await asyncio.sleep(1)
             
-            # Request input/output labels
-            await self.request_status_dump("INPUT LABELS")
-            await asyncio.sleep(0.5)
-            await self.request_status_dump("OUTPUT LABELS")
-            await asyncio.sleep(0.5)
+            # Only request data blocks we haven't received yet
+            required_blocks = [
+                "VIDEOHUB DEVICE", 
+                "INPUT LABELS", 
+                "OUTPUT LABELS", 
+                "VIDEO OUTPUT ROUTING"
+            ]
             
-            # Request current routing
-            await self.request_status_dump("VIDEO OUTPUT ROUTING")
+            for block_name in required_blocks:
+                if block_name not in self._received_blocks:
+                    _LOGGER.info("Requesting missing data: %s", block_name)
+                    await self.request_status_dump(block_name)
+                    await asyncio.sleep(0.5)
+                else:
+                    _LOGGER.debug("Skipping already received block: %s", block_name)
             
+            # Check if we've received all required data
+            missing_blocks = [block for block in required_blocks 
+                             if block not in self._received_blocks]
+            if missing_blocks:
+                _LOGGER.warning("Missing data blocks after initialization: %s", 
+                               ", ".join(missing_blocks))
+            else:
+                _LOGGER.info("All required data blocks received successfully")
+                
         except Exception as ex:
             _LOGGER.error("Error requesting initial data: %s", str(ex))
     
