@@ -353,9 +353,14 @@ class BlackmagicVideohub(asyncio.Protocol):
         else:
             _LOGGER.debug("No transport to close")
         
-        # Clear callbacks only if not allowing reconnection
+        # When not allowing reconnection, reset all state for clean shutdown
         if not allow_reconnect:
             self._update_callbacks = []
+            self._buffer = ""  # Clear any partial data in buffer
+            self.initialised = False  # Reset initialization flag
+            self._received_blocks = set()  # Clear record of received data blocks
+            self._error_message = None  # Clear error messages
+            _LOGGER.debug("Reset buffer and initialization state for clean shutdown")
 
     async def reconnect(self) -> None:
         """Attempt to reconnect to the device."""

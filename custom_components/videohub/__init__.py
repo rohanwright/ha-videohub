@@ -244,7 +244,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # First, try to stop the hub connection regardless of whether unload succeeds
-    if entry.entry_id in hass.data[DOMAIN]:
+    if entry.entry_id in hass.data.get(DOMAIN, {}):
         hub = hass.data[DOMAIN][entry.entry_id].get(DATA_VIDEOHUB)
         if hub:
             # Log the connection state before stopping
