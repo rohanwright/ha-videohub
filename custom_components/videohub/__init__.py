@@ -375,53 +375,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.info("After manual data requests: coordinator has %d outputs", 
                          len(coordinator.data.get("outputs", {})) if coordinator.data else 0)
 
-    # Register services for the domain - always register to ensure services are updated
     _LOGGER.info("Registering Videohub services")
     
-    # Check if services already exist and remove them to ensure clean registration
+    # Remove existing services to force fresh registration
     for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
         if hass.services.has_service(DOMAIN, service):
-            _LOGGER.debug("Service %s.%s already exists, will be updated", DOMAIN, service)
+            _LOGGER.debug("Removing existing service %s.%s", DOMAIN, service)
+            hass.services.async_remove(DOMAIN, service)
+            await asyncio.sleep(0.1)  # Small delay for cleanup
     
-    # Register all services
+    # Register services with try-except for each
     try:
         hass.services.async_register(
-            DOMAIN, 
-            SERVICE_SET_INPUT, 
-            handle_set_input, 
-            schema=SET_INPUT_SCHEMA
+            DOMAIN, SERVICE_SET_INPUT, handle_set_input, schema=SET_INPUT_SCHEMA
         )
-        
-        hass.services.async_register(
-            DOMAIN, 
-            SERVICE_SET_OUTPUT_LABEL, 
-            handle_set_output_label, 
-            schema=SET_LABEL_SCHEMA
-        )
-        
-        hass.services.async_register(
-            DOMAIN, 
-            SERVICE_SET_INPUT_LABEL, 
-            handle_set_input_label, 
-            schema=SET_INPUT_LABEL_SCHEMA
-        )
-        
-        # Verify registration was successful
-        all_services = True
-        for service in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL):
-            if not hass.services.has_service(DOMAIN, service):
-                all_services = False
-                _LOGGER.error("Failed to register service %s.%s", DOMAIN, service)
-                
-        if all_services:
-            _LOGGER.info("All Videohub services registered successfully")
-        else:
-            _LOGGER.warning("Some Videohub services failed to register")
-    
+        _LOGGER.debug("Registered %s.%s", DOMAIN, SERVICE_SET_INPUT)
     except Exception as ex:
-        _LOGGER.error("Error registering services: %s", str(ex))
-
-    # Set up all platform entities
+        _LOGGER.error("Failed to register %s.%s: %s", DOMAIN, SERVICE_SET_INPUT, ex)
+    
+    try:
+        hass.services.async_register(
+            DOMAIN, SERVICE_SET_OUTPUT_LABEL, handle_set_output_label, schema=SET_LABEL_SCHEMA
+        )
+        _LOGGER.debug("Registered %s.%s", DOMAIN, SERVICE_SET_OUTPUT_LABEL)
+    except Exception as ex:
+        _LOGGER.error("Failed to register %s.%s: %s", DOMAIN, SERVICE_SET_OUTPUT_LABEL, ex)
+    
+    try:
+        hass.services.async_register(
+            DOMAIN, SERVICE_SET_INPUT_LABEL, handle_set_input_label, schema=SET_INPUT_LABEL_SCHEMA
+        )
+        _LOGGER.debug("Registered %s.%s", DOMAIN, SERVICE_SET_INPUT_LABEL)
+    except Exception as ex:
+        _LOGGER.error("Failed to register %s.%s: %s", DOMAIN, SERVICE_SET_INPUT_LABEL, ex)
+    
+    # Verify registration
+    all_services = all(hass.services.has_service(DOMAIN, s) for s in (SERVICE_SET_INPUT, SERVICE_SET_OUTPUT_LABEL, SERVICE_SET_INPUT_LABEL))
+    if all_services:
+        _LOGGER.info("All Videohub services registered successfully")
+    else:
+        _LOGGER.error("Some Videohub services failed to register")
+    
+    # platform setup
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
